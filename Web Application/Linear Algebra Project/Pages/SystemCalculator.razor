@@ -1,0 +1,191 @@
+﻿@page "/SystemCalculator"
+
+<div class="row align-items-center">
+    <div class="col text-center">
+        <h3>Solving Any System of Equations</h3>
+    </div>
+</div>
+<div class="container mt-3">
+    <div class="row">
+        <div class="col-3 text-end">
+            <label>Enter The System Size: </label>
+        </div>
+        <div class="col-2">
+            <input type="number" class="form-control" @bind="@systemSize" />
+        </div>
+        <div class="col-3">
+            <button class="btn btn-primary" @onclick="CreateMatrix">Create Matrix</button>
+        </div>
+    </div>
+</div>
+
+<div class="container m-3">
+    @if (Matrix != null)
+    {
+        int i = 0;
+
+        @foreach (var m in Enumerable.Range(0,systemSize))
+        {
+            int j = 0;
+            <div class="row">
+                <div class="col-2 text-center">
+                    <p class="align-self-center m-2">Equation @(++i)</p>
+                </div>
+               @foreach (var n in Enumerable.Range(0,systemSize+1))
+                {
+                    <input type="number" class="col-1 m-2"  @bind="@Matrix[m][n]"  />
+@*                    <p>@m</p>
+                    <p>@n</p>*@
+                    @if (j == systemSize - 1)
+                    {
+                        <label class="col-1 align-self-center text-center m-2">=</label>
+                    }
+                    j++;
+                }
+            </div>
+        }
+    }
+</div>
+<button class="btn btn-primary" onclick="@ProgramManager"> Solve</button>
+@if(solutions!=null)
+{
+    int b=0;
+    <div class="row text-center">
+        @foreach(var item in solutions )
+        {
+
+            <label class="clo-2">>  x @b = @item</label>
+        }
+    </div>
+    
+}
+
+@code {
+    public int systemSize { get; set; } = 0;
+    public List<List<double>> Matrix { get; set; }
+    public List<List<double>> _Matrix { get; set; }
+    public List<double> lastColumn { get; set; }
+    //List<int> lastColumn = new List<int>();
+    public List<double> solutions { get; set; }
+    //List<int> solutions = new List<int>();
+
+    private void CreateMatrix()
+    {
+        Matrix = new List<List<double>>();
+
+        for (int i = 0; i < systemSize; i++)
+        {
+            List<double> innerList = new List<double>();
+            for (int j = 0; j < systemSize + 1; j++)
+            {
+                innerList.Add(i+i*j);
+            }
+            Matrix.Add(innerList);
+        }
+    }
+
+
+    private void GetCofactor(List<List<double>> matrix, List<List<double>> submatrix, int row, int col)
+    {
+        int n = matrix.Count;
+        int subrow = 0, subcol = 0;
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < n; j++)
+            {
+                if (i != row && j != col)
+                {
+                    submatrix[subrow][subcol++] = matrix[i][j];
+                    if (subcol == n - 1)
+                    {
+                        subrow++;
+                        subcol = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    private void separate()
+    {
+        foreach ( List<double> row in _Matrix)
+        {
+            double lastElement = row[(row.Count - 1)];
+            row.RemoveAt(row.Count - 1);
+            lastColumn.Add(lastElement);
+        }
+    }
+
+
+    private double Determinant(List<List<double>> matrix)
+    {
+        int n = matrix.Count;
+        if (n == 1)
+            return matrix[0][0];
+        double det = 0;
+        List<List<double>> submatrix = new List<List<double>>();
+        for (int i = 0; i < n - 1; i++)
+        {
+            submatrix.Add(new List<double>());
+            for (int j = 0; j < n - 1; j++)
+            {
+                submatrix[i].Add(0);
+            }
+        }
+        for (int j = 0; j < n; j++)
+        {
+            GetCofactor(matrix, submatrix, 0, j);
+            det += matrix[0][j] * Determinant(submatrix) * (j % 2 == 0 ? 1 : -1);
+        }
+        return det;
+    }
+
+    private List<double> SolveSystem(List<List<double>> coefficients, List<double> constants)
+    {
+        int n = coefficients.Count;
+        // Check if the coefficient matrix is invertible
+        double det_A = Determinant(coefficients);
+        if (det_A == 0)
+        {
+            //Console.WriteLine("The coefficient matrix is not invertible.");
+            return new List<double>();
+        }
+        List<double>_solutions = new List<double>();
+
+        // Solve for each variable using Cramer's Rule
+        for (int i = 0; i < n; i++)
+        {
+            List<List<double>> matrix_i = new List<List<double>>(coefficients);
+            // Replace the ith column with the constants
+            for (int j = 0; j < n; j++)
+            {
+                matrix_i[j][i] = constants[j];
+            }
+            // Calculate the determinant of the modified matrix
+            double det_i = Determinant(matrix_i);
+            // Calculate the solution for the ith variable
+            _solutions.Add(det_i / det_A);
+        }
+        return _solutions;
+    }
+
+    private void ProgramManager()
+    {
+        //solutions = new List<int>();
+        lastColumn = new List<double>();
+        _Matrix = new List<List<double>>();
+        foreach(var row in Matrix )
+        {
+            List<double> copyRow = new List<double>(row);
+            _Matrix.Add(copyRow);
+        }
+        //_Matrix = Matrix;
+        separate();
+        solutions = SolveSystem(_Matrix, lastColumn);
+    }
+    
+}
+
+
+
+   
